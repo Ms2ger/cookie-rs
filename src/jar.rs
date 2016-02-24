@@ -344,11 +344,13 @@ impl<'a> Iterator for Iter<'a> {
 #[cfg(feature = "secure")]
 mod secure {
     extern crate openssl;
+    extern crate ring;
     extern crate rustc_serialize;
     use std::io::prelude::*;
 
     use Cookie;
-    use self::openssl::crypto::{hmac, hash, memcmp, symm};
+    use self::openssl::crypto::{hash, memcmp, symm};
+    use self::ring::{digest, hmac};
     use self::rustc_serialize::base64::{ToBase64, FromBase64, STANDARD};
 
     pub const MIN_KEY_LEN: usize = 32;
@@ -398,9 +400,9 @@ mod secure {
     }
 
     fn dosign(key: &[u8], val: &str) -> Vec<u8> {
-        let mut hmac = hmac::HMAC::new(hash::Type::SHA1, key);
-        hmac.write_all(val.as_bytes()).unwrap();
-        hmac.finish()
+        let s_key = hmac::SigningKey::new(&digest::SHA1, key);
+        let signature = hmac::sign(&s_key, val.as_bytes());
+        signature.as_ref().to_vec()
     }
 
     // Implementation details were taken from Rails. See
